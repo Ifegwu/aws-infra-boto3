@@ -1,0 +1,73 @@
+# ----------------------------
+# Python environments & caches
+# ----------------------------
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.pyo
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# ----------------------------
+# Editor / OS noise
+# ----------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ----------------------------
+# Local configuration/secrets
+# ----------------------------
+.env
+.env.*
+*.env
+*.local
+
+# AWS credentials and CLI/config files
+.aws/
+aws/
+credentials
+config
+
+# Common private key / cert formats
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.csr
+
+# Terraform secrets/state (if added later)
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+.terraform/
+
+# Kubernetes secrets/manifests (if added later)
+*secret*.yaml
+*secret*.yml
+
+# ----------------------------
+# Build / tooling artifacts
+# ----------------------------
+dist/
+build/
+*.egg-info/
+pip-wheel-metadata/
+.python-version
+
+# Logs and runtime dumps
+*.log
+*.pid
+*.out
+*.err

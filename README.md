@@ -1,26 +1,43 @@
 # aws-infra-boto3
 
-Deploy a single EC2 instance with `boto3` using a small CLI script in `boto.py`.
+Deploy a single EC2 instance with `boto3` using a modular infrastructure CLI.
 
-The script can either:
+Provisioning can either:
 - use your existing subnet and security group(s), or
-- create a temporary **dev** security group (SSH open to `0.0.0.0/0`) in the default VPC.
+- create a temporary **dev** security group (selected ports open to `0.0.0.0/0`) in the default VPC.
 
-## What `boto.py` does
+## Project structure
+
+The code is now modularized:
+
+- `boto.py` - thin CLI entrypoint
+- `infra/cli.py` - argument parsing and validation
+- `infra/models.py` - provisioning config model
+- `infra/ami.py` - AMI resolution via SSM
+- `infra/network.py` - VPC/subnet and security-group logic
+- `infra/ec2.py` - EC2 launch workflow and optional post-launch steps
+
+## What the provisioner does
 
 - Resolves an AMI:
   - default: latest Amazon Linux 2023 x86_64 from SSM parameter store
   - optional override: `--ami-id`
 - Validates network/security-group inputs.
-- Optionally creates a dev security group for SSH (`tcp/22`) if `--create-dev-security-group` is set.
+- Optionally creates a dev security group and opens configurable TCP ports.
 - Launches exactly one EC2 instance with a `Name` tag.
+- Supports optional user data (`cloud-init`) from file.
+- Supports optional wait-until-running flow.
+- Supports optional Elastic IP allocation/association.
+- Supports dry-run mode for IAM/permission validation.
 - Prints launch output including:
   - `InstanceId`
   - `State`
   - `PrivateIpAddress`
+  - `PublicIpAddress`
   - `ImageId`
   - `SubnetId`
   - `SecurityGroupIds`
+  - `ElasticIp` (when `--allocate-eip` is used)
 
 ## Prerequisites
 
@@ -32,6 +49,9 @@ The script can either:
   - `ec2:RunInstances`
   - `ec2:CreateSecurityGroup`
   - `ec2:Describe*`
+  - `ec2:AuthorizeSecurityGroupIngress`
+  - `ec2:AllocateAddress` (if using `--allocate-eip`)
+  - `ec2:AssociateAddress` (if using `--allocate-eip`)
   - `ssm:GetParameters`
 - An existing EC2 key pair in the target region (`--key-name`).
 
@@ -49,11 +69,16 @@ python boto.py --key-name <your-keypair> --create-dev-security-group
 
 - `--region`: AWS region (defaults to `AWS_DEFAULT_REGION`, then `us-east-1`).
 - `--instance-type`: defaults to `t3.micro`.
-- `--name`: instance `Name` tag, defaults to `trades-ec2`.
+- `--name`: instance `Name` tag, defaults to `infra-ec2`.
 - `--ami-id`: custom AMI ID (otherwise latest AL2023 x86_64 is resolved from SSM).
 - `--subnet-id`: subnet ID (required when using `--security-group-id`).
 - `--security-group-id`: security group ID; repeatable for multiple groups.
-- `--create-dev-security-group`: create a new SG with SSH open from anywhere (dev only).
+- `--create-dev-security-group`: create a new SG in the VPC and open selected ports.
+- `--open-ports`: comma-separated ports for dev SG mode (default: `22`).
+- `--user-data-file`: path to cloud-init/user-data script.
+- `--wait-running`: wait for instance to enter `running` state.
+- `--allocate-eip`: allocate and attach a new Elastic IP.
+- `--dry-run`: validate permissions without creating resources.
 
 ## Validation rules
 
@@ -102,6 +127,26 @@ python boto.py \
   --subnet-id subnet-0123456789abcdef0 \
   --security-group-id sg-0123456789abcdef0 \
   --ami-id ami-0123456789abcdef0
+```
+
+### 5) Dev SG with multiple ports + wait + Elastic IP
+
+```bash
+python boto.py \
+  --key-name my-key \
+  --create-dev-security-group \
+  --open-ports 22,80,443 \
+  --wait-running \
+  --allocate-eip
+```
+
+### 6) Launch with cloud-init user data
+
+```bash
+python boto.py \
+  --key-name my-key \
+  --create-dev-security-group \
+  --user-data-file ./cloud-init.yaml
 ```
 
 ## Notes
